@@ -1,0 +1,11 @@
+spring:
+  application:
+    name: meuimovel
+  data:
+    mongodb:
+      uri: ${MONGO_URI}
+      database: meuimovel
+
+springdoc:
+  swagger-ui:
+    path: /swagger-ui.html
