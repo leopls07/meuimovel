@@ -9,6 +9,8 @@ import com.api.meuimovel.repository.ImovelRepository;
 import lombok.RequiredArgsConstructor;
 import org.springframework.stereotype.Service;
 
+import java.math.BigDecimal;
+import java.math.RoundingMode;
 import java.util.Objects;
 
 @Service
@@ -143,24 +145,38 @@ public class SimulacaoServiceImpl implements SimulacaoService {
                 .build();
     }
 
+    private Double round2(Double value) {
+        if (value == null) return null;
+        return BigDecimal.valueOf(value)
+                .setScale(2, RoundingMode.HALF_UP)
+                .doubleValue();
+    }
+
+    private Double round3(Double value) {
+        if (value == null) return null;
+        return BigDecimal.valueOf(value)
+                .setScale(3, RoundingMode.HALF_UP)
+                .doubleValue();
+    }
+
     private SimulacaoResponseDTO toResponse(SimulacaoFinanciamento s) {
         if (s == null) return null;
         return SimulacaoResponseDTO.builder()
-                .entrada(s.getEntrada())
-                .percentualEntrada(s.getPercentualEntrada())
-                .valorFinanciado(s.getValorFinanciado())
-                .taxaJurosAnual(s.getTaxaJurosAnual())
-                .taxaJurosMensal(s.getTaxaJurosMensal())
+                .entrada(round2(s.getEntrada()))
+                .percentualEntrada(round2(s.getPercentualEntrada()))
+                .valorFinanciado(round2(s.getValorFinanciado()))
+                .taxaJurosAnual(round2(s.getTaxaJurosAnual()))
+                .taxaJurosMensal(round3(s.getTaxaJurosMensal()))
                 .prazoMeses(s.getPrazoMeses())
-                .parcelaMensalPrice(s.getParcelaMensalPrice())
-                .amortizacaoExtraMes(s.getAmortizacaoExtraMes())
-                .pagamentoTotalMes(s.getPagamentoTotalMes())
+                .parcelaMensalPrice(round2(s.getParcelaMensalPrice()))
+                .amortizacaoExtraMes(round2(s.getAmortizacaoExtraMes()))
+                .pagamentoTotalMes(round2(s.getPagamentoTotalMes()))
                 .nParcelasEfetivas(s.getNParcelasEfetivas())
-                .tempoPagamentoAnos(s.getTempoPagamentoAnos())
-                .totalPago(s.getTotalPago())
-                .totalJuros(s.getTotalJuros())
-                .jurosPctFinanciado(s.getJurosPctFinanciado())
-                .custoTotalMensal(s.getCustoTotalMensal())
+                .tempoPagamentoAnos(round2(s.getTempoPagamentoAnos()))
+                .totalPago(round2(s.getTotalPago()))
+                .totalJuros(round2(s.getTotalJuros()))
+                .jurosPctFinanciado(round2(s.getJurosPctFinanciado()))
+                .custoTotalMensal(round2(s.getCustoTotalMensal()))
                 .build();
     }
 

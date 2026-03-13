@@ -16,6 +16,7 @@ public class ImovelFilterDTO {
     private Double precoMax;
     private Double metMin;
     private Integer quartos;
+    private Integer banheiros;
     private Integer vagas;
     private Boolean areaLazer;
     private Boolean vagaCoberta;
