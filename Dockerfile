@@ -26,7 +26,7 @@ COPY src ./src
 RUN mvn package -DskipTests -B
 
 # ── Stage 2: Runtime
-FROM FROM eclipse-temurin:21-jre-jammy
+FROM eclipse-temurin:21-jre-jammy
 
 WORKDIR /app
 
