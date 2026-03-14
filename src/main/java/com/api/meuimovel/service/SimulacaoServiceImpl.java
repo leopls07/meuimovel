@@ -6,6 +6,7 @@ import com.api.meuimovel.exception.ResourceNotFoundException;
 import com.api.meuimovel.model.Imovel;
 import com.api.meuimovel.model.SimulacaoFinanciamento;
 import com.api.meuimovel.repository.ImovelRepository;
+import com.api.meuimovel.security.SecurityUtils;
 import lombok.RequiredArgsConstructor;
 import org.springframework.stereotype.Service;
 
@@ -73,7 +74,8 @@ public class SimulacaoServiceImpl implements SimulacaoService {
     }
 
     private Imovel buscarImovel(String id) {
-        return imovelRepository.findById(id)
+        String userId = SecurityUtils.currentUserId();
+        return imovelRepository.findByIdAndUserId(id, userId)
                 .orElseThrow(() -> new ResourceNotFoundException("Imóvel não encontrado: " + id));
     }
 

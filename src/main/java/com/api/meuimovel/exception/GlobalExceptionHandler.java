@@ -1,5 +1,6 @@
 package com.api.meuimovel.exception;
 
+import com.api.meuimovel.exception.UnauthorizedException;
 import jakarta.servlet.http.HttpServletRequest;
 import org.springframework.http.HttpStatus;
 import org.springframework.http.ResponseEntity;
@@ -27,6 +28,11 @@ public class GlobalExceptionHandler {
                 .map(this::toFieldError)
                 .toList();
         return build(HttpStatus.BAD_REQUEST, "Erro de validação", request.getRequestURI(), errors);
+    }
+
+    @ExceptionHandler(UnauthorizedException.class)
+    public ResponseEntity<Map<String, Object>> handleUnauthorized(UnauthorizedException ex, HttpServletRequest request) {
+        return build(HttpStatus.UNAUTHORIZED, ex.getMessage(), request.getRequestURI(), null);
     }
 
     @ExceptionHandler(IllegalArgumentException.class)

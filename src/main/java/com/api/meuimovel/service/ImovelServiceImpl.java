@@ -9,6 +9,7 @@ import com.api.meuimovel.exception.ResourceNotFoundException;
 import com.api.meuimovel.model.Imovel;
 import com.api.meuimovel.model.SimulacaoFinanciamento;
 import com.api.meuimovel.repository.ImovelRepository;
+import com.api.meuimovel.security.SecurityUtils;
 import lombok.RequiredArgsConstructor;
 import org.springframework.data.mongodb.core.MongoTemplate;
 import org.springframework.data.mongodb.core.query.Criteria;
@@ -32,7 +33,10 @@ public class ImovelServiceImpl implements ImovelService {
 
     @Override
     public ImovelResponseDTO criar(ImovelRequestDTO request) {
+        String userId = SecurityUtils.currentUserId();
+
         Imovel imovel = Imovel.builder()
+                .userId(userId)
                 .localizacao(request.getLocalizacao())
                 .notaLocalizacao(request.getNotaLocalizacao())
                 .metragem(request.getMetragem())
@@ -60,7 +64,8 @@ public class ImovelServiceImpl implements ImovelService {
 
     @Override
     public List<ImovelResponseDTO> listarTodos() {
-        return repository.findAll().stream().map(this::toResponse).toList();
+        String userId = SecurityUtils.currentUserId();
+        return repository.findAllByUserId(userId).stream().map(this::toResponse).toList();
     }
 
     @Override
@@ -104,8 +109,12 @@ public class ImovelServiceImpl implements ImovelService {
 
     @Override
     public List<ImovelResponseDTO> buscar(ImovelFilterDTO filter) {
+        String userId = SecurityUtils.currentUserId();
         Query q = new Query();
         List<Criteria> and = new ArrayList<>();
+
+        // Escopo obrigatório: apenas imóveis do usuário logado
+        and.add(Criteria.where("userId").is(userId));
 
         if (StringUtils.hasText(filter.getLocalizacao())) {
             String escaped = Pattern.quote(filter.getLocalizacao().trim());
@@ -122,15 +131,21 @@ public class ImovelServiceImpl implements ImovelService {
         if (filter.getDistMaxMetro() != null) and.add(Criteria.where("distanciaMetroKm").lte(filter.getDistMaxMetro()));
         if (filter.getNotaMinLoc() != null) and.add(Criteria.where("notaLocalizacao").gte(filter.getNotaMinLoc()));
 
-        if (!and.isEmpty()) {
-            q.addCriteria(new Criteria().andOperator(and));
-        }
+        q.addCriteria(new Criteria().andOperator(and));
 
         return mongoTemplate.find(q, Imovel.class).stream().map(this::toResponse).toList();
     }
 
+    // ── Helpers ───────────────────────────────────────────────────────────────
+
+    /**
+     * Busca o imóvel garantindo que ele pertence ao usuário autenticado.
+     * Retorna 404 tanto para "não existe" quanto para "pertence a outro usuário",
+     * evitando vazar informação sobre a existência do recurso.
+     */
     private Imovel buscarEntidadePorId(String id) {
-        return repository.findById(id)
+        String userId = SecurityUtils.currentUserId();
+        return repository.findByIdAndUserId(id, userId)
                 .orElseThrow(() -> new ResourceNotFoundException("Imóvel não encontrado: " + id));
     }
 
@@ -151,7 +166,6 @@ public class ImovelServiceImpl implements ImovelService {
         Double cond = Objects.requireNonNullElse(imovel.getCondominioMensal(), 0.0);
         imovel.setCustoFixoMensal(iptu + cond);
 
-        // Se houver simulação já calculada, atualiza custoTotalMensal (depende do custo fixo)
         SimulacaoFinanciamento sim = imovel.getSimulacao();
         if (sim != null && sim.getParcelaMensalPrice() != null) {
             sim.setCustoTotalMensal(sim.getParcelaMensalPrice() + imovel.getCustoFixoMensal());
@@ -160,16 +174,12 @@ public class ImovelServiceImpl implements ImovelService {
 
     private Double round2(Double value) {
         if (value == null) return null;
-        return BigDecimal.valueOf(value)
-                .setScale(2, RoundingMode.HALF_UP)
-                .doubleValue();
+        return BigDecimal.valueOf(value).setScale(2, RoundingMode.HALF_UP).doubleValue();
     }
 
     private Double round3(Double value) {
         if (value == null) return null;
-        return BigDecimal.valueOf(value)
-                .setScale(3, RoundingMode.HALF_UP)
-                .doubleValue();
+        return BigDecimal.valueOf(value).setScale(3, RoundingMode.HALF_UP).doubleValue();
     }
 
     private ImovelResponseDTO toResponse(Imovel imovel) {
