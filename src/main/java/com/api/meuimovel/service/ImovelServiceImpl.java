@@ -55,6 +55,8 @@ public class ImovelServiceImpl implements ImovelService {
                 .estadoConservacao(request.getEstadoConservacao())
                 .aliquotaIptu(request.getAliquotaIptu())
                 .observacoes(request.getObservacoes())
+                .url(request.getUrl())
+                .aceitaPets(request.getAceitaPets())
                 .build();
 
         calcularCamposImovel(imovel);
@@ -95,6 +97,8 @@ public class ImovelServiceImpl implements ImovelService {
         if (patch.getEstadoConservacao() != null) imovel.setEstadoConservacao(patch.getEstadoConservacao());
         if (patch.getAliquotaIptu() != null) imovel.setAliquotaIptu(patch.getAliquotaIptu());
         if (patch.getObservacoes() != null) imovel.setObservacoes(patch.getObservacoes());
+        if (patch.getUrl() != null) imovel.setUrl(patch.getUrl());
+        if (patch.getAceitaPets() != null) imovel.setAceitaPets(patch.getAceitaPets());
 
         calcularCamposImovel(imovel);
         Imovel salvo = repository.save(imovel);
@@ -205,6 +209,8 @@ public class ImovelServiceImpl implements ImovelService {
                 .estadoConservacao(imovel.getEstadoConservacao())
                 .aliquotaIptu(round2(imovel.getAliquotaIptu()))
                 .observacoes(imovel.getObservacoes())
+                .url(imovel.getUrl())
+                .aceitaPets(imovel.getAceitaPets())
                 .simulacao(toResponse(imovel.getSimulacao()))
                 .build();
     }

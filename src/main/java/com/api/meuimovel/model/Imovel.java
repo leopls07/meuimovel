@@ -42,6 +42,8 @@ public class Imovel {
     private Integer estadoConservacao;
     private Double aliquotaIptu;
     private String observacoes;
+    private String url;
+    private Boolean aceitaPets;
 
     private SimulacaoFinanciamento simulacao;
 }
