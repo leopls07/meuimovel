@@ -34,6 +34,8 @@ public class ImovelResponseDTO {
     private Integer estadoConservacao;
     private Double aliquotaIptu;
     private String observacoes;
+    private String url;
+    private Boolean aceitaPets;
 
     private SimulacaoResponseDTO simulacao;
 }

@@ -58,5 +58,10 @@ public class ImovelPatchDTO {
     private Double aliquotaIptu;
 
     private String observacoes;
+
+    @Size(max = 2048, message = "url deve ter no máximo 2048 caracteres")
+    private String url;
+
+    private Boolean aceitaPets;
 }
 
