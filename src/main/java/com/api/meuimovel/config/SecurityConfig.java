@@ -34,10 +34,12 @@ public class SecurityConfig {
                 // Endpoints de autenticação são públicos
                 .requestMatchers("/api/auth/**").permitAll()
                 // Swagger UI – libere se quiser acesso sem token
+                .requestMatchers(HttpMethod.OPTIONS, "/**").permitAll()
                 .requestMatchers(
                     "/swagger-ui.html",
                     "/swagger-ui/**",
                     "/v3/api-docs/**"
+
                 ).permitAll()
                 // Tudo mais exige autenticação
                 .anyRequest().authenticated()
@@ -53,10 +55,10 @@ public class SecurityConfig {
         config.setAllowedOriginPatterns(List.of("*"));
         config.setAllowedMethods(List.of("GET", "POST", "PATCH", "PUT", "DELETE", "OPTIONS"));
         config.setAllowedHeaders(List.of("*"));
-        config.setAllowCredentials(true);
+        config.setAllowCredentials(false);
 
         UrlBasedCorsConfigurationSource source = new UrlBasedCorsConfigurationSource();
-        source.registerCorsConfiguration("/api/**", config);
+        source.registerCorsConfiguration("/**", config);
         return source;
     }
 }
