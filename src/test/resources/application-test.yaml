@@ -1,0 +1,16 @@
+spring:
+  main:
+    banner-mode: "off"
+  data:
+    mongodb:
+      uri: mongodb://localhost:27017/test
+      database: test
+
+security:
+  jwt:
+    # valor dummy apenas para inicializar beans em testes
+    secret: dGVzdC1zZWNyZXQtZm9yLWNpLWRvLW5vdC11c2UtaW4tcHJvZCE=
+    expiration-ms: 86400000
+  google:
+    client-id: test-client-id
+

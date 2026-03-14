@@ -5,6 +5,8 @@ import com.api.meuimovel.dto.ImovelRequestDTO;
 import com.api.meuimovel.exception.ResourceNotFoundException;
 import com.api.meuimovel.model.Imovel;
 import com.api.meuimovel.repository.ImovelRepository;
+import com.api.meuimovel.security.SecurityUtils;
+import org.junit.jupiter.api.AfterEach;
 import org.junit.jupiter.api.BeforeEach;
 import org.junit.jupiter.api.Test;
 import org.junit.jupiter.api.extension.ExtendWith;
@@ -12,6 +14,7 @@ import org.mockito.ArgumentCaptor;
 import org.mockito.Captor;
 import org.mockito.InjectMocks;
 import org.mockito.Mock;
+import org.mockito.MockedStatic;
 import org.mockito.junit.jupiter.MockitoExtension;
 import org.springframework.data.mongodb.core.MongoTemplate;
 
@@ -23,6 +26,8 @@ import static org.mockito.Mockito.*;
 
 @ExtendWith(MockitoExtension.class)
 class ImovelServiceTest {
+
+    static final String USER_ID = "user-test-123";
 
     @Mock
     ImovelRepository repository;
@@ -36,9 +41,19 @@ class ImovelServiceTest {
     @Captor
     ArgumentCaptor<Imovel> imovelCaptor;
 
+    // SecurityUtils é uma classe estática — usamos mockStatic para controlar
+    // o retorno de currentUserId() sem precisar de SecurityContext real
+    MockedStatic<SecurityUtils> securityUtils;
+
     @BeforeEach
     void setup() {
+        securityUtils = mockStatic(SecurityUtils.class);
+        securityUtils.when(SecurityUtils::currentUserId).thenReturn(USER_ID);
+    }
 
+    @AfterEach
+    void teardown() {
+        securityUtils.close();
     }
 
     @Test
@@ -51,7 +66,6 @@ class ImovelServiceTest {
                 .condominioMensal(800.0)
                 .build();
 
-
         when(repository.save(any(Imovel.class))).thenAnswer(inv -> inv.getArgument(0));
 
         service.criar(req);
@@ -59,6 +73,7 @@ class ImovelServiceTest {
         verify(repository).save(imovelCaptor.capture());
         Imovel salvo = imovelCaptor.getValue();
 
+        assertThat(salvo.getUserId()).isEqualTo(USER_ID);
         assertThat(salvo.getPrecoM2()).isCloseTo(10000.0, within(0.0001));
         assertThat(salvo.getCustoFixoMensal()).isCloseTo(1000.0, within(0.0001));
     }
@@ -81,7 +96,7 @@ class ImovelServiceTest {
 
     @Test
     void buscarPorId_deveLancarExcecaoQuandoNaoEncontrado() {
-        when(repository.findById("x")).thenReturn(Optional.empty());
+        when(repository.findByIdAndUserId("x", USER_ID)).thenReturn(Optional.empty());
 
         assertThatThrownBy(() -> service.buscarPorId("x"))
                 .isInstanceOf(ResourceNotFoundException.class)
@@ -93,6 +108,7 @@ class ImovelServiceTest {
         when(repository.save(any(Imovel.class))).thenAnswer(inv -> inv.getArgument(0));
         Imovel existente = Imovel.builder()
                 .id("1")
+                .userId(USER_ID)
                 .localizacao("Antiga")
                 .preco(300000.0)
                 .metragem(30.0)
@@ -100,7 +116,7 @@ class ImovelServiceTest {
                 .condominioMensal(500.0)
                 .build();
 
-        when(repository.findById("1")).thenReturn(Optional.of(existente));
+        when(repository.findByIdAndUserId("1", USER_ID)).thenReturn(Optional.of(existente));
 
         ImovelPatchDTO patch = ImovelPatchDTO.builder()
                 .localizacao("Nova")
