@@ -9,6 +9,7 @@ import com.api.meuimovel.exception.ResourceNotFoundException;
 import com.api.meuimovel.model.Imovel;
 import com.api.meuimovel.model.SimulacaoFinanciamento;
 import com.api.meuimovel.repository.ImovelRepository;
+import com.api.meuimovel.security.SecurityUtils;
 import lombok.RequiredArgsConstructor;
 import org.springframework.data.mongodb.core.MongoTemplate;
 import org.springframework.data.mongodb.core.query.Criteria;
@@ -16,6 +17,8 @@ import org.springframework.data.mongodb.core.query.Query;
 import org.springframework.stereotype.Service;
 import org.springframework.util.StringUtils;
 
+import java.math.BigDecimal;
+import java.math.RoundingMode;
 import java.util.ArrayList;
 import java.util.List;
 import java.util.Objects;
@@ -30,7 +33,10 @@ public class ImovelServiceImpl implements ImovelService {
 
     @Override
     public ImovelResponseDTO criar(ImovelRequestDTO request) {
+        String userId = SecurityUtils.currentUserId();
+
         Imovel imovel = Imovel.builder()
+                .userId(userId)
                 .localizacao(request.getLocalizacao())
                 .notaLocalizacao(request.getNotaLocalizacao())
                 .metragem(request.getMetragem())
@@ -58,7 +64,8 @@ public class ImovelServiceImpl implements ImovelService {
 
     @Override
     public List<ImovelResponseDTO> listarTodos() {
-        return repository.findAll().stream().map(this::toResponse).toList();
+        String userId = SecurityUtils.currentUserId();
+        return repository.findAllByUserId(userId).stream().map(this::toResponse).toList();
     }
 
     @Override
@@ -102,8 +109,12 @@ public class ImovelServiceImpl implements ImovelService {
 
     @Override
     public List<ImovelResponseDTO> buscar(ImovelFilterDTO filter) {
+        String userId = SecurityUtils.currentUserId();
         Query q = new Query();
         List<Criteria> and = new ArrayList<>();
+
+        // Escopo obrigatório: apenas imóveis do usuário logado
+        and.add(Criteria.where("userId").is(userId));
 
         if (StringUtils.hasText(filter.getLocalizacao())) {
             String escaped = Pattern.quote(filter.getLocalizacao().trim());
@@ -113,21 +124,28 @@ public class ImovelServiceImpl implements ImovelService {
         if (filter.getPrecoMax() != null) and.add(Criteria.where("preco").lte(filter.getPrecoMax()));
         if (filter.getMetMin() != null) and.add(Criteria.where("metragem").gte(filter.getMetMin()));
         if (filter.getQuartos() != null) and.add(Criteria.where("quartos").is(filter.getQuartos()));
+        if (filter.getBanheiros() != null) and.add(Criteria.where("qtdBanheiros").is(filter.getBanheiros()));
         if (filter.getVagas() != null) and.add(Criteria.where("vagas").is(filter.getVagas()));
         if (filter.getAreaLazer() != null) and.add(Criteria.where("areaLazer").is(filter.getAreaLazer()));
         if (filter.getVagaCoberta() != null) and.add(Criteria.where("vagaCoberta").is(filter.getVagaCoberta()));
         if (filter.getDistMaxMetro() != null) and.add(Criteria.where("distanciaMetroKm").lte(filter.getDistMaxMetro()));
         if (filter.getNotaMinLoc() != null) and.add(Criteria.where("notaLocalizacao").gte(filter.getNotaMinLoc()));
 
-        if (!and.isEmpty()) {
-            q.addCriteria(new Criteria().andOperator(and));
-        }
+        q.addCriteria(new Criteria().andOperator(and));
 
         return mongoTemplate.find(q, Imovel.class).stream().map(this::toResponse).toList();
     }
 
+    // ── Helpers ───────────────────────────────────────────────────────────────
+
+    /**
+     * Busca o imóvel garantindo que ele pertence ao usuário autenticado.
+     * Retorna 404 tanto para "não existe" quanto para "pertence a outro usuário",
+     * evitando vazar informação sobre a existência do recurso.
+     */
     private Imovel buscarEntidadePorId(String id) {
-        return repository.findById(id)
+        String userId = SecurityUtils.currentUserId();
+        return repository.findByIdAndUserId(id, userId)
                 .orElseThrow(() -> new ResourceNotFoundException("Imóvel não encontrado: " + id));
     }
 
@@ -148,11 +166,20 @@ public class ImovelServiceImpl implements ImovelService {
         Double cond = Objects.requireNonNullElse(imovel.getCondominioMensal(), 0.0);
         imovel.setCustoFixoMensal(iptu + cond);
 
-        // Se houver simulação já calculada, atualiza custoTotalMensal (depende do custo fixo)
         SimulacaoFinanciamento sim = imovel.getSimulacao();
         if (sim != null && sim.getParcelaMensalPrice() != null) {
             sim.setCustoTotalMensal(sim.getParcelaMensalPrice() + imovel.getCustoFixoMensal());
         }
+    }
+
+    private Double round2(Double value) {
+        if (value == null) return null;
+        return BigDecimal.valueOf(value).setScale(2, RoundingMode.HALF_UP).doubleValue();
+    }
+
+    private Double round3(Double value) {
+        if (value == null) return null;
+        return BigDecimal.valueOf(value).setScale(3, RoundingMode.HALF_UP).doubleValue();
     }
 
     private ImovelResponseDTO toResponse(Imovel imovel) {
@@ -160,7 +187,7 @@ public class ImovelServiceImpl implements ImovelService {
                 .id(imovel.getId())
                 .localizacao(imovel.getLocalizacao())
                 .notaLocalizacao(imovel.getNotaLocalizacao())
-                .metragem(imovel.getMetragem())
+                .metragem(round2(imovel.getMetragem()))
                 .quartos(imovel.getQuartos())
                 .vagas(imovel.getVagas())
                 .qtdBanheiros(imovel.getQtdBanheiros())
@@ -168,15 +195,15 @@ public class ImovelServiceImpl implements ImovelService {
                 .andar(imovel.getAndar())
                 .areaLazer(imovel.getAreaLazer())
                 .vagaCoberta(imovel.getVagaCoberta())
-                .distanciaMetroKm(imovel.getDistanciaMetroKm())
-                .preco(imovel.getPreco())
-                .precoM2(imovel.getPrecoM2())
-                .iptuMensal(imovel.getIptuMensal())
-                .condominioMensal(imovel.getCondominioMensal())
-                .custoFixoMensal(imovel.getCustoFixoMensal())
+                .distanciaMetroKm(round2(imovel.getDistanciaMetroKm()))
+                .preco(round2(imovel.getPreco()))
+                .precoM2(round2(imovel.getPrecoM2()))
+                .iptuMensal(round2(imovel.getIptuMensal()))
+                .condominioMensal(round2(imovel.getCondominioMensal()))
+                .custoFixoMensal(round2(imovel.getCustoFixoMensal()))
                 .anoConstrucao(imovel.getAnoConstrucao())
                 .estadoConservacao(imovel.getEstadoConservacao())
-                .aliquotaIptu(imovel.getAliquotaIptu())
+                .aliquotaIptu(round2(imovel.getAliquotaIptu()))
                 .observacoes(imovel.getObservacoes())
                 .simulacao(toResponse(imovel.getSimulacao()))
                 .build();
@@ -185,21 +212,21 @@ public class ImovelServiceImpl implements ImovelService {
     private SimulacaoResponseDTO toResponse(SimulacaoFinanciamento simulacao) {
         if (simulacao == null) return null;
         return SimulacaoResponseDTO.builder()
-                .entrada(simulacao.getEntrada())
-                .percentualEntrada(simulacao.getPercentualEntrada())
-                .valorFinanciado(simulacao.getValorFinanciado())
-                .taxaJurosAnual(simulacao.getTaxaJurosAnual())
-                .taxaJurosMensal(simulacao.getTaxaJurosMensal())
+                .entrada(round2(simulacao.getEntrada()))
+                .percentualEntrada(round2(simulacao.getPercentualEntrada()))
+                .valorFinanciado(round2(simulacao.getValorFinanciado()))
+                .taxaJurosAnual(round2(simulacao.getTaxaJurosAnual()))
+                .taxaJurosMensal(round3(simulacao.getTaxaJurosMensal()))
                 .prazoMeses(simulacao.getPrazoMeses())
-                .parcelaMensalPrice(simulacao.getParcelaMensalPrice())
-                .amortizacaoExtraMes(simulacao.getAmortizacaoExtraMes())
-                .pagamentoTotalMes(simulacao.getPagamentoTotalMes())
+                .parcelaMensalPrice(round2(simulacao.getParcelaMensalPrice()))
+                .amortizacaoExtraMes(round2(simulacao.getAmortizacaoExtraMes()))
+                .pagamentoTotalMes(round2(simulacao.getPagamentoTotalMes()))
                 .nParcelasEfetivas(simulacao.getNParcelasEfetivas())
-                .tempoPagamentoAnos(simulacao.getTempoPagamentoAnos())
-                .totalPago(simulacao.getTotalPago())
-                .totalJuros(simulacao.getTotalJuros())
-                .jurosPctFinanciado(simulacao.getJurosPctFinanciado())
-                .custoTotalMensal(simulacao.getCustoTotalMensal())
+                .tempoPagamentoAnos(round2(simulacao.getTempoPagamentoAnos()))
+                .totalPago(round2(simulacao.getTotalPago()))
+                .totalJuros(round2(simulacao.getTotalJuros()))
+                .jurosPctFinanciado(round2(simulacao.getJurosPctFinanciado()))
+                .custoTotalMensal(round2(simulacao.getCustoTotalMensal()))
                 .build();
     }
 }

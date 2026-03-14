@@ -1,0 +1,50 @@
+name: Deploy Backend → Railway
+
+on:
+  push:
+    branches: [main, master]
+    paths:
+      - 'src/**'
+      - 'pom.xml'
+      - 'Dockerfile'
+  workflow_dispatch:
+
+jobs:
+  test:
+    name: Testes
+    runs-on: ubuntu-latest
+
+    steps:
+      - name: Checkout
+        uses: actions/checkout@v4
+
+      - name: Setup Java 21
+        uses: actions/setup-java@v4
+        with:
+          java-version: '21'
+          distribution: 'temurin'
+          cache: 'maven'
+
+      - name: Executar testes
+        run: ./mvnw test -B
+        env:
+          # Testes não precisam do MongoDB real — Spring usa Flapdoodle embed
+          MONGO_URI: mongodb://localhost:27017/test
+          JWT_SECRET: dGVzdC1zZWNyZXQtcGFyYS1jaS1uYW8tdXNhcl9lbV9wcm9kdWNhbw==
+          JWT_EXPIRATION_MS: 86400000
+          GOOGLE_CLIENT_ID: test-client-id
+
+  deploy:
+    name: Deploy
+    runs-on: ubuntu-latest
+    needs: test   # só faz deploy se os testes passarem
+
+    steps:
+      - name: Checkout
+        uses: actions/checkout@v4
+
+      - name: Deploy para Railway
+        uses: bervProject/railway-deploy@main
+        with:
+          railway_token: ${{ secrets.RAILWAY_TOKEN }}
+          service: ${{ secrets.RAILWAY_SERVICE_NAME }}

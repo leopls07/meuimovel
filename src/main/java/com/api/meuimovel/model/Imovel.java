@@ -5,6 +5,7 @@ import lombok.Builder;
 import lombok.Data;
 import lombok.NoArgsConstructor;
 import org.springframework.data.annotation.Id;
+import org.springframework.data.mongodb.core.index.Indexed;
 import org.springframework.data.mongodb.core.mapping.Document;
 
 @Document(collection = "imovel")
@@ -16,6 +17,10 @@ public class Imovel {
 
     @Id
     private String id;
+
+    /** ID do usuário dono deste imóvel */
+    @Indexed
+    private String userId;
 
     private String localizacao;
     private Integer notaLocalizacao;
