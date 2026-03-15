@@ -2,6 +2,9 @@ package com.api.meuimovel.service;
 
 import com.api.meuimovel.dto.SimulacaoRequestDTO;
 import com.api.meuimovel.dto.SimulacaoResponseDTO;
+import com.api.meuimovel.dto.SimulacaoResumoDTO;
+
+import java.util.List;
 
 public interface SimulacaoService {
 
@@ -12,5 +15,7 @@ public interface SimulacaoService {
     SimulacaoResponseDTO patch(String imovelId, SimulacaoRequestDTO patch);
 
     void deletar(String imovelId);
+
+    List<SimulacaoResumoDTO> listarPorUsuario();
 }
 

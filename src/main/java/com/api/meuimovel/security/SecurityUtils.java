@@ -21,6 +21,7 @@ public final class SecurityUtils {
      */
     public static String currentUserId() {
         Authentication auth = SecurityContextHolder.getContext().getAuthentication();
+        System.out.println(auth);
         if (auth == null || !auth.isAuthenticated()) {
             throw new IllegalStateException("Nenhum usuário autenticado no contexto atual");
         }
