@@ -36,4 +36,5 @@ build/
 src/main/resources/application-local.yaml
 src/main/resources/application-local.yml
 src/main/resources/application-local.*
+src/main/resources/application-frontlocal.yaml
 

@@ -2,6 +2,7 @@ package com.api.meuimovel.service;
 
 import com.api.meuimovel.dto.SimulacaoRequestDTO;
 import com.api.meuimovel.dto.SimulacaoResponseDTO;
+import com.api.meuimovel.dto.SimulacaoResumoDTO;
 import com.api.meuimovel.exception.ResourceNotFoundException;
 import com.api.meuimovel.model.Imovel;
 import com.api.meuimovel.model.SimulacaoFinanciamento;
@@ -12,6 +13,7 @@ import org.springframework.stereotype.Service;
 
 import java.math.BigDecimal;
 import java.math.RoundingMode;
+import java.util.List;
 import java.util.Objects;
 
 @Service
@@ -71,6 +73,36 @@ public class SimulacaoServiceImpl implements SimulacaoService {
         Imovel imovel = buscarImovel(imovelId);
         imovel.setSimulacao(null);
         imovelRepository.save(imovel);
+    }
+
+    @Override
+    public List<SimulacaoResumoDTO> listarPorUsuario() {
+        String userId = SecurityUtils.currentUserId();
+        return imovelRepository.findAllByUserId(userId).stream()
+                .filter(imovel -> imovel.getSimulacao() != null)
+                .map(imovel -> {
+                    SimulacaoFinanciamento s = imovel.getSimulacao();
+                    return SimulacaoResumoDTO.builder()
+                            .imovelId(imovel.getId())
+                            .localizacao(imovel.getLocalizacao())
+                            .preco(round2(imovel.getPreco()))
+                            .precoM2(round2(imovel.getPrecoM2()))
+                            .custoFixoMensal(round2(imovel.getCustoFixoMensal()))
+                            .entrada(round2(s.getEntrada()))
+                            .percentualEntrada(round2(s.getPercentualEntrada()))
+                            .valorFinanciado(round2(s.getValorFinanciado()))
+                            .parcelaMensalPrice(round2(s.getParcelaMensalPrice()))
+                            .pagamentoTotalMes(round2(s.getPagamentoTotalMes()))
+                            .totalJuros(round2(s.getTotalJuros()))
+                            .totalPago(round2(s.getTotalPago()))
+                            .taxaJurosAnual(round2(s.getTaxaJurosAnual()))
+                            .prazoMeses(s.getPrazoMeses())
+                            .nParcelasEfetivas(s.getNParcelasEfetivas())
+                            .tempoPagamentoAnos(round2(s.getTempoPagamentoAnos()))
+                            .custoTotalMensal(round2(s.getCustoTotalMensal()))
+                            .build();
+                })
+                .toList();
     }
 
     private Imovel buscarImovel(String id) {
@@ -186,4 +218,3 @@ public class SimulacaoServiceImpl implements SimulacaoService {
         return a != null ? a : (b != null ? b : c);
     }
 }
-
