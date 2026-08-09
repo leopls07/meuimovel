@@ -23,6 +23,7 @@ public class SimulacaoServiceImpl implements SimulacaoService {
     private static final double TAXA_JUROS_ANUAL_PADRAO = 0.061;
     private static final int PRAZO_MESES_PADRAO = 420;
     private static final double AMORTIZACAO_EXTRA_PADRAO = 0.0;
+    private static final double EPSILON_PARCELAS = 1e-6;
 
     private final ImovelRepository imovelRepository;
 
@@ -89,13 +90,13 @@ public class SimulacaoServiceImpl implements SimulacaoService {
                             .precoM2(round2(imovel.getPrecoM2()))
                             .custoFixoMensal(round2(imovel.getCustoFixoMensal()))
                             .entrada(round2(s.getEntrada()))
-                            .percentualEntrada(round2(s.getPercentualEntrada()))
+                            .percentualEntrada(round4(s.getPercentualEntrada()))
                             .valorFinanciado(round2(s.getValorFinanciado()))
                             .parcelaMensalPrice(round2(s.getParcelaMensalPrice()))
                             .pagamentoTotalMes(round2(s.getPagamentoTotalMes()))
                             .totalJuros(round2(s.getTotalJuros()))
                             .totalPago(round2(s.getTotalPago()))
-                            .taxaJurosAnual(round2(s.getTaxaJurosAnual()))
+                            .taxaJurosAnual(round4(s.getTaxaJurosAnual()))
                             .prazoMeses(s.getPrazoMeses())
                             .nParcelasEfetivas(s.getNParcelasEfetivas())
                             .tempoPagamentoAnos(round2(s.getTempoPagamentoAnos()))
@@ -148,10 +149,9 @@ public class SimulacaoServiceImpl implements SimulacaoService {
             throw new IllegalArgumentException("pagamentoTotalMes insuficiente para amortizar o financiamento");
         }
 
-        int nParcelasEfetivas = (int) Math.ceil(
-                Math.log(pagamentoTotalMes / (pagamentoTotalMes - valorFinanciado * taxaJurosMensal)) /
-                        Math.log(1 + taxaJurosMensal)
-        );
+        double nParcelasBruto = Math.log(pagamentoTotalMes / (pagamentoTotalMes - valorFinanciado * taxaJurosMensal)) /
+                Math.log(1 + taxaJurosMensal);
+        int nParcelasEfetivas = (int) Math.ceil(nParcelasBruto - EPSILON_PARCELAS);
 
         double totalPago = nParcelasEfetivas * pagamentoTotalMes;
         double totalJuros = totalPago - valorFinanciado;
@@ -186,10 +186,10 @@ public class SimulacaoServiceImpl implements SimulacaoService {
                 .doubleValue();
     }
 
-    private Double round3(Double value) {
+    private Double round4(Double value) {
         if (value == null) return null;
         return BigDecimal.valueOf(value)
-                .setScale(3, RoundingMode.HALF_UP)
+                .setScale(4, RoundingMode.HALF_UP)
                 .doubleValue();
     }
 
@@ -197,10 +197,10 @@ public class SimulacaoServiceImpl implements SimulacaoService {
         if (s == null) return null;
         return SimulacaoResponseDTO.builder()
                 .entrada(round2(s.getEntrada()))
-                .percentualEntrada(round2(s.getPercentualEntrada()))
+                .percentualEntrada(round4(s.getPercentualEntrada()))
                 .valorFinanciado(round2(s.getValorFinanciado()))
-                .taxaJurosAnual(round2(s.getTaxaJurosAnual()))
-                .taxaJurosMensal(round3(s.getTaxaJurosMensal()))
+                .taxaJurosAnual(round4(s.getTaxaJurosAnual()))
+                .taxaJurosMensal(round4(s.getTaxaJurosMensal()))
                 .prazoMeses(s.getPrazoMeses())
                 .parcelaMensalPrice(round2(s.getParcelaMensalPrice()))
                 .amortizacaoExtraMes(round2(s.getAmortizacaoExtraMes()))
@@ -209,7 +209,7 @@ public class SimulacaoServiceImpl implements SimulacaoService {
                 .tempoPagamentoAnos(round2(s.getTempoPagamentoAnos()))
                 .totalPago(round2(s.getTotalPago()))
                 .totalJuros(round2(s.getTotalJuros()))
-                .jurosPctFinanciado(round2(s.getJurosPctFinanciado()))
+                .jurosPctFinanciado(round4(s.getJurosPctFinanciado()))
                 .custoTotalMensal(round2(s.getCustoTotalMensal()))
                 .build();
     }
